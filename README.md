@@ -72,8 +72,7 @@ The pipeline bot is a one-time investment. Once built, it is never rebuilt.
 The GPR model it produces for a given movement type is reused across bots
 and across seasons with a single scalar coefficient adjustment — no
 retraining, no new data collection, no kernel retuning. The trained model
-transfers directly. One pipeline bot. One person to run it. Roughly one week
-per movement type after the pipeline exists, running asynchronously to the
+transfers directly. One pipeline bot. One person to run it, running asynchronously to the
 rest of the team. The competition bot is never touched for localization purposes.
 
 A natural objection is that different bots have different error profiles —
@@ -305,7 +304,7 @@ type, every season. It does not transfer. It does not improve with reuse.
 It scales with neither team size nor season length. This pipeline runs
 once per movement type, produces a model that transfers across bots with
 one coefficient, and costs nothing to reuse. One pipeline bot. One person
-to run it. One week per movement type (after learning the pipeline/framework per movement) 
+to run it. A few weeks per movement type (after learning the pipeline/framework per movement) 
 . The trained model then exists permanently, improving in coverage as more movement types are added,
 and transferring to every future bot the team builds.
 
@@ -339,7 +338,7 @@ and retuning a localization suite is time not spent on better chassis design,
 better game object geometry, better programming, more driving practice, more
 thorough scouting, stronger match strategy. In a small team operating across
 a full season, those opportunity costs are real and they compound. A pipeline
-that runs asynchronously in one week and then disappears from the team's
+that runs asynchronously and then disappears from the team's
 workload entirely frees that time for everything else that determines whether
 a team wins — not just how accurately the bot moves.
 
