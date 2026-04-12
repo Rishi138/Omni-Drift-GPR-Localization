@@ -327,3 +327,48 @@ one coefficient, and costs nothing to reuse. One pipeline bot. One person
 to run it. One week per movement type. The trained model then exists
 permanently, improving in coverage as more movement types are added,
 and transferring to every future bot the team builds.
+
+## Conclusion
+
+This pipeline is not a universal fix. It is a deliberate tradeoff,
+and that tradeoff should be understood clearly before adopting it.
+
+The pipeline trades extreme positional precision for mechanical simplicity,
+build flexibility, and reusability. A full localization suite with tracker
+pods, distance sensors, and an IMU — properly built, properly tuned, and
+properly maintained — will outperform this pipeline on raw positional
+accuracy. That ceiling is higher. The cost of reaching it, and sustaining
+it, is everything described in the motivation: the rebuilding, the retuning,
+the redesigning, the maintenance, the build constraints, the wiring, the
+weight, compounding across every bot and every season. For teams with the
+resources, bandwidth, and roster size to absorb that cost consistently,
+a full localization suite may be the right choice.
+
+For the vast majority of teams, it is not. Most VEX teams are small,
+under-mentored, and operating under real constraints on time and build
+bandwidth. A localization suite that demands continuous maintenance is
+a localization suite that degrades silently when that maintenance does
+not happen — mistuned coefficients, shifted sensors, wiring issues mid-season.
+The pipeline's accuracy floor, achieved with zero match-time hardware, is
+more reliable in practice than a theoretically higher ceiling that requires
+sustained investment to maintain.
+
+That investment is not just hardware — it is time. Time spent rebuilding
+and retuning a localization suite is time not spent on better chassis design,
+better game object geometry, better programming, more driving practice, more
+thorough scouting, stronger match strategy. In a small team operating across
+a full season, those opportunity costs are real and they compound. A pipeline
+that runs asynchronously in one week and then disappears from the team's
+workload entirely frees that time for everything else that determines whether
+a team wins — not just how accurately the bot moves.
+
+What the pipeline delivers is consistent, principled correction of the
+largest generalizable source of odometry error, with a quantitative
+confidence signal on every correction, transferable across bots with a
+single coefficient adjustment, at zero recurring cost after the initial
+setup. It does not eliminate all error. It does not replace a full
+localization suite on raw precision. It replaces the recurring burden
+of one with a one-time investment, for a correction that is good enough
+to materially improve autonomous performance for the teams that need it most.
+
+The tradeoff is real. For most teams, it is the right one.
