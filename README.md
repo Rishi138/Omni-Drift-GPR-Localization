@@ -123,6 +123,23 @@ exactly when and why the model transfers, and exactly what the residual
 contains. Precision of scope is what makes the model trustworthy
 and the transfer claim defensible.
 
+A possible objection is that error varies across field surfaces — different
+tiles, different wear patterns, different friction characteristics between
+venues produce different drift profiles, so a model trained on one field
+cannot transfer reliably to another. This is true, and it is not a problem
+the pipeline claims to solve. Field-surface variation is bot-and-environment-
+specific, inconsistent across venues, and not physically generalizable in
+the way omni drift is. It lives in the MSE by design, alongside motor variance
+and other bot-specific nuances. The pipeline's transfer claim is scoped
+exclusively to omni drift — the component of error that is physically
+determined by wheel geometry and RPM regardless of surface. That claim
+is defensible precisely because it does not overreach. A system that claimed
+to also correct for field-surface variation would require retraining at every
+venue, eliminating the reusability that makes the pipeline valuable in the
+first place. By accepting field-surface error as unexplained variance, the
+pipeline remains a one-time training investment that transfers everywhere.
+
+
 **Tunable scaling coefficient:**
 The physics model is general across bots because omni drift is general.
 However, during training the pipeline bot carries a full sensor suite
