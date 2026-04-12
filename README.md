@@ -92,36 +92,30 @@ justified by the nature of omni drift, and the architecture is designed around i
 
 ## Architecture
 
-### 1. Physics Model — Omni Drift Correction
+### 1. GPR — Offline Error Modeling
 
-The first correction layer targets omni wheel drift specifically.
-Omni wheel drift is the single largest and most generalizable source
-of odometry error in VEX robots running omni wheels. It is physically
-deterministic: the lateral slip of an omni wheel is a direct consequence
-of its geometry and rotational velocity, not a stochastic or bot-specific
-phenomenon. This determinism is what makes it modelable in a way that
-transfers across bots.
-
-The physics are straightforward. An omni wheel generates lateral slip
-proportional to the component of velocity perpendicular to the wheel's
-rolling direction. For a given wheel radius r and angular velocity ω,
-the slip error scales predictably with RPM and heading. The model
-captures this relationship directly.
+The GPR model learns the relationship between movement parameters and
+omni wheel drift directly. Omni wheel drift is the single largest and
+most generalizable source of odometry error in VEX robots running omni
+wheels. It is physically deterministic: the lateral slip of an omni wheel
+is a direct consequence of its geometry and rotational velocity, not a
+stochastic or bot-specific phenomenon. This determinism is what makes it
+modelable in a way that transfers across bots.
 
 **Deliberate scope:**
-In any regression model, the model explains X% of output variance
-and the remainder lives in the MSE as unexplained residual. This model
-is explicitly scoped to the variance attributable to omni wheel drift.
+In any regression model, the model explains X% of output variance and
+the remainder lives in the MSE as unexplained residual. This model is
+explicitly scoped to the variance attributable to omni wheel drift.
 Bot-specific nuances — motor variance, drivetrain asymmetry, weight
 distribution effects — are not generalizable across bots and are not
 claimed to be explained here. They live in the MSE by design.
 
-This is not a weakness. A model that claims to explain everything
-explains nothing precisely. By scoping to omni drift specifically —
-physically motivated, deterministic, universal — it is possible to know
-exactly when and why the model transfers, and exactly what the residual
-contains. Precision of scope is what makes the model trustworthy
-and the transfer claim defensible.
+This is not a weakness. A model that claims to explain everything explains
+nothing precisely. By scoping to omni drift specifically — physically
+motivated, deterministic, universal — it is possible to know exactly when
+and why the model transfers, and exactly what the residual contains.
+Precision of scope is what makes the model trustworthy and the transfer
+claim defensible.
 
 A possible objection is that error varies across field surfaces — different
 tiles, different wear patterns, different friction characteristics between
@@ -129,25 +123,24 @@ venues produce different drift profiles, so a model trained on one field
 cannot transfer reliably to another. This is true, and it is not a problem
 the pipeline claims to solve. Field-surface variation is bot-and-environment-
 specific, inconsistent across venues, and not physically generalizable in
-the way omni drift is. It lives in the MSE by design, alongside motor variance
-and other bot-specific nuances. The pipeline's transfer claim is scoped
-exclusively to omni drift — the component of error that is physically
-determined by wheel geometry and RPM regardless of surface. That claim
-is defensible precisely because it does not overreach. A system that claimed
-to also correct for field-surface variation would require retraining at every
-venue, eliminating the reusability that makes the pipeline valuable in the
-first place. By accepting field-surface error as unexplained variance, the
-pipeline remains a one-time training investment that transfers everywhere.
-
+the way omni drift is. It lives in the MSE by design, alongside motor
+variance and other bot-specific nuances. The pipeline's transfer claim is
+scoped exclusively to omni drift — the component of error that is physically
+determined by wheel geometry and RPM regardless of surface. That claim is
+defensible precisely because it does not overreach. A system that claimed
+to also correct for field-surface variation would require retraining at
+every venue, eliminating the reusability that makes the pipeline valuable
+in the first place. By accepting field-surface error as unexplained variance,
+the pipeline remains a one-time training investment that transfers everywhere.
 
 **Tunable scaling coefficient:**
-The physics model is general across bots because omni drift is general.
+The GPR model is general across bots because omni drift is general.
 However, during training the pipeline bot carries a full sensor suite
 that will not be present on the competition bot, changing its mass,
 center of mass, and friction characteristics. A single scalar coefficient
 k is introduced outside the GPR model:
 
-    corrected_error = k · physics_model_output
+    corrected_error = k · GPR_output
 
 k is tuned once per bot configuration to bridge the training environment
 to the match environment. It absorbs the magnitude difference introduced
@@ -157,6 +150,75 @@ it scales the output. This is why one coefficient is sufficient: the
 shape of omni drift error is universal, only the magnitude varies,
 and a scalar captures magnitude difference entirely.
 
+**Why the relationship is nonlinear:**
+The relationship between movement parameters and omni drift is deeply
+nonlinear, and this is not an edge case — it is the norm. Doubling
+movement duration does not double drift, because drift accumulates as
+the integral of slip over the trajectory, which depends nonlinearly on
+heading changes, velocity profile, and motor torque curves throughout
+the movement. Doubling RPM does not double lateral slip, because at
+higher RPMs inertia and wheel deformation introduce additional nonlinear
+terms. A curve at velocity v produces a fundamentally different error
+profile than the same curve at 2v not because the geometry changed but
+because the dynamic interactions between motors, wheels, and surface
+scale differently. The error function e(heading, RPM, velocity) is not
+well-approximated by any low-degree polynomial over the full operating
+range. GPR makes no assumption about functional form and learns the true
+structure of the error surface directly from data, which is why it is
+the right tool here.
+
+**Uncertainty and why it matters:**
+GPR does not produce a point prediction. It produces a full probability
+distribution over predictions, characterized by a predicted mean correction
+μ* and a prediction variance σ²*:
+
+    μ* = K(x*, X) · K(XX)⁻¹ · y
+    σ²* = K(x*, x*) - K(x*, X) · K(XX)⁻¹ · K(X, x*)
+
+σ²* directly reflects how well the training data supports the prediction
+at that input. In regions where training data is dense, σ²* is low and
+the correction is trusted. In regions where data is sparse, σ²* is high
+and the model is explicitly flagging that it has not seen enough of that
+movement configuration to be confident.
+
+This uncertainty is not just a validation mechanism — it is actionable
+information that directly improves autonomous design. A high σ²* on a
+given movement tells the programmer that movement is poorly characterized
+and should not be relied on in a high-stakes autonomous. The options are
+clear: collect more training data for that configuration, split the movement
+into shorter segments that fall in well-characterized regions of the input
+space, or redesign the autonomous to avoid that movement entirely in favor
+of one GPR is confident about. Low σ²* across an entire autonomous path
+is a quantitative guarantee that every movement in that path is well-modeled
+and the corrections are trustworthy. This turns autonomous design from
+intuition-driven iteration into a process with an explicit confidence signal
+at every step.
+
+**Kernel hyperparameters and transfer:**
+The kernel hyperparameters — length scale, output scale, and noise variance —
+are tuned once during training on the pipeline bot and then locked. They
+encode the learned structure of omni drift error for that movement type:
+how quickly error decorrelates across the input space, how large the error
+magnitudes are, and how much noise is present in the training signal. These
+do not change when the model transfers to a new bot. The error structure —
+the shape of how drift scales with heading, RPM, and velocity — is physically
+the same across bots because omni drift is universal. What changes between
+bots is magnitude, handled entirely by k outside the GPR. Kernel
+hyperparameters capture shape. k captures magnitude. Shape is universal.
+Magnitude is bot-specific. The GPR transfers with zero retraining and
+zero kernel retuning.
+
+**Inputs:**
+Each training example and query is a vector of movement parameters:
+heading, RPM, and velocity components. No sensor input is required at
+query time. The model is queried entirely from motion function parameters.
+
+**Output and deployment:**
+For a given input vector, GPR outputs μ* and σ²*. If σ²* is within
+acceptable bounds, μ* is used to construct a counter-bias hardcoded into
+the motion function. The competition bot executes that function with the
+correction already embedded. No sensors. No inference. No additional
+compute on the brain.
 ---
 
 ### 2. Training Data Pipeline
@@ -203,97 +265,14 @@ odometry has diverged. With three independent sensor streams including
 absolute position anchors, the EKF state estimates are reliable enough
 to treat as ground truth for training purposes.
 
-The training signal for GPR is the residual between the physics model's
-predicted position and the EKF's estimated position at each timestep.
-This residual is clean: physics-subtracted, well-anchored, and sourced
-from a sensor fusion pipeline with genuine absolute position references.
+The training signal is the residual between the raw odometry's predicted
+position and the EKF's estimated position at each timestep.
+This residual is clean: well-anchored and sourced from a sensor fusion
+pipeline with genuine absolute position references.
 GPR learns from this signal.
 
 All sensor hardware exists only during this phase. After training, it is
 removed. It is never mounted on the competition bot.
-
----
-
-### 3. GPR — Offline Error Modeling
-
-After the physics model removes omni drift, the remaining residual contains
-error from multiple sources. Not all of it is learnable or worth learning.
-Bot-specific nuances that are inconsistent across runs live in the MSE
-by the same deliberate scoping logic as the physics layer — accepted as
-unexplained variance by design. GPR targets only the portion of the residual
-that is consistent and repeatable for this movement type on this bot:
-same input parameters, same error, reliably. That is the variance GPR
-claims to explain. The rest is not claimed.
-
-**Why the relationship is nonlinear:**
-
-The relationship between movement parameters and odometry error is deeply
-nonlinear, and this is not an edge case — it is the norm. Doubling movement
-duration does not double drift, because drift accumulates as the integral
-of slip over the trajectory, which depends nonlinearly on heading changes,
-velocity profile, and motor torque curves throughout the movement. Doubling
-RPM does not double lateral slip, because at higher RPMs inertia and wheel
-deformation introduce additional nonlinear terms. A curve at velocity v
-produces a fundamentally different error profile than the same curve at 2v
-not because the geometry changed but because the dynamic interactions between
-motors, wheels, and surface scale differently. The error function
-e(heading, RPM, velocity) is not well-approximated by any low-degree
-polynomial over the full operating range. GPR makes no assumption about
-functional form and learns the true structure of the error surface directly
-from data, which is why it is the right tool here.
-
-**Uncertainty and why it matters:**
-
-GPR does not produce a point prediction. It produces a full probability
-distribution over predictions, characterized by a predicted mean correction
-μ* and a prediction variance σ²*:
-
-    μ* = K(x*, X) · K(XX)⁻¹ · y
-    σ²* = K(x*, x*) - K(x*, X) · K(XX)⁻¹ · K(X, x*)
-
-σ²* directly reflects how well the training data supports the prediction
-at that input. In regions where training data is dense, σ²* is low and
-the correction is trusted. In regions where data is sparse, σ²* is high
-and the model is explicitly flagging that it has not seen enough of that
-movement configuration to be confident.
-
-This uncertainty is not just a validation mechanism — it is actionable
-information that directly improves autonomous design. A high σ²* on a
-given movement tells the programmer that movement is poorly characterized
-and should not be relied on in a high-stakes autonomous. The options are
-clear: collect more training data for that configuration, split the movement
-into shorter segments that fall in well-characterized regions of the input
-space, or redesign the autonomous to avoid that movement entirely in favor
-of one GPR is confident about. Low σ²* across an entire autonomous path
-is a quantitative guarantee that every movement in that path is well-modeled
-and the corrections are trustworthy. This turns autonomous design from
-intuition-driven iteration into a process with an explicit confidence signal
-at every step.
-
-**Kernel hyperparameters and transfer:**
-The kernel hyperparameters — length scale, output scale, and noise variance —
-are tuned once during training on the pipeline bot and then locked. They encode
-the learned structure of omni drift error for that movement type: how quickly
-error decorrelates across the input space, how large the error magnitudes are,
-and how much noise is present in the training signal. These do not change when
-the model transfers to a new bot. The error structure — the shape of how drift
-scales with heading, RPM, and velocity — is physically the same across bots
-because omni drift is universal. What changes between bots is magnitude,
-handled entirely by k outside the GPR. Kernel hyperparameters capture shape.
-k captures magnitude. Shape is universal. Magnitude is bot-specific.
-The GPR transfers with zero retraining and zero kernel retuning.
-
-**Inputs:**
-Each training example and query is a vector of movement parameters:
-heading, RPM, and velocity components. No sensor input is required at
-query time. The model is queried entirely from motion function parameters.
-
-**Output and deployment:**
-For a given input vector, GPR outputs μ* and σ²*. If σ²* is within
-acceptable bounds, μ* is used to construct a counter-bias hardcoded
-into the motion function. The competition bot executes that function
-with the correction already embedded. No sensors. No inference.
-No additional compute on the brain.
 
 ---
 
@@ -302,9 +281,9 @@ No additional compute on the brain.
 The architecture is built around two principles that reinforce each other:
 **model only what is generalizable** and **deploy only what is necessary.**
 
-Omni drift is physically universal — the physics model explains the
-portion of error attributable to it, claims nothing beyond it, and
-transfers across bots via a single scalar. The consistent, repeatable
+Omni drift is physically universal — the GPR explains the portion of
+error attributable to it, claims nothing beyond it, and transfers
+across bots via a single scalar. The consistent, repeatable
 residual within a movement type is learnable — GPR captures its shape
 from sparse training data, locks its kernel hyperparameters, and transfers
 without retraining. Everything else is accepted as unexplained variance
