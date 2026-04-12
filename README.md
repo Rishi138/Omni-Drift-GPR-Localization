@@ -351,5 +351,3 @@ setup. It does not eliminate all error. It does not replace a full
 localization suite on raw precision. It replaces the recurring burden
 of one with a one-time investment, for a correction that is good enough
 to materially improve autonomous performance for the teams that need it most.
-
-The tradeoff is real. For most teams, it is the right one.
