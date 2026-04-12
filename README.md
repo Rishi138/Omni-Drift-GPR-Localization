@@ -214,11 +214,13 @@ heading, RPM, and velocity components. No sensor input is required at
 query time. The model is queried entirely from motion function parameters.
 
 **Output and deployment:**
-For a given input vector, GPR outputs μ* and σ²*. If σ²* is within
+
+For a given input vector, GPR outputs μ and σ². If σ² is within
 acceptable bounds, μ* is used to construct a counter-bias hardcoded into
 the motion function. The competition bot executes that function with the
 correction already embedded. No sensors. No inference. No additional
 compute on the brain.
+
 ---
 
 ### 2. Training Data Pipeline
@@ -303,8 +305,8 @@ type, every season. It does not transfer. It does not improve with reuse.
 It scales with neither team size nor season length. This pipeline runs
 once per movement type, produces a model that transfers across bots with
 one coefficient, and costs nothing to reuse. One pipeline bot. One person
-to run it. One week per movement type. The trained model then exists
-permanently, improving in coverage as more movement types are added,
+to run it. One week per movement type (after learning the pipeline/framework per movement) 
+. The trained model then exists permanently, improving in coverage as more movement types are added,
 and transferring to every future bot the team builds.
 
 ## Conclusion
