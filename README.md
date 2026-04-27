@@ -182,16 +182,18 @@ movement configuration to be confident.
 
 This uncertainty is not just a validation mechanism — it is actionable
 information that directly improves autonomous design. A high σ²* on a
-given movement tells the programmer that movement is poorly characterized
+given movement tells the programmer that the movement is poorly characterized
 and should not be relied on in a high-stakes autonomous. The options are
 clear: collect more training data for that configuration, split the movement
 into shorter segments that fall in well-characterized regions of the input
-space, or redesign the autonomous to avoid that movement entirely in favor
-of one GPR is confident about. Low σ²* across an entire autonomous path
+space, or redesign the autonomous to avoid that movement entirely in favor of
+our GPR is confident about. Low σ²* across an entire autonomous path
 is a quantitative guarantee that every movement in that path is well-modeled
 and the corrections are trustworthy. This turns autonomous design from
 intuition-driven iteration into a process with an explicit confidence signal
 at every step.
+
+Additionally, it should be noted that movements resulting in higher error aren't necessarily "bad movements" if the uncertainty of the said error is within reasonable bounds. If the error is predictable, movements that typically result in higher error can be adjusted accordingly to account for it. On the other hand, it also reveals deceiving movements that have lower error but are more volatile and unpredictable in terms of error, which could be more silently catastrophic to the route. This also opens up new possibilities of autonomous route optimization and scoring, allowing programmers to maximize the speed and accuracy of their programming and route planning. A layer further can push for a wrapper program that automatically generates routes for autonomous programming, ranks autonomous routes, rates overall autonomous routes, and can go to the extent of simulating routes. 
 
 **Kernel hyperparameters and transfer:**
 The kernel hyperparameters — length scale, output scale, and noise variance —
