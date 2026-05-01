@@ -138,7 +138,7 @@ However, during training the pipeline bot carries a full sensor suite
 that will not be present on the competition bot, changing its mass,
 center of mass, and friction characteristics. A feedforward layer is introduced outside the GPR model:
 
-    corrected_error = k · GPR_output
+    corrected_error =  feedforward(GPR_output)
 
 k is tuned once per bot configuration to bridge the training environment
 to the match environment. It absorbs the magnitude difference introduced
@@ -203,8 +203,8 @@ magnitudes are, and how much noise is present in the training signal. These
 do not change when the model transfers to a new bot. The error structure —
 the shape of how drift scales with heading, RPM, and velocity — is physically
 the same across bots because omni drift is universal. What changes between
-bots is magnitude, handled entirely by k outside the GPR. Kernel
-hyperparameters capture shape. k captures magnitude. Shape is universal.
+bots is magnitude, handled entirely by the single feedforward-layer outside the GPR. Kernel
+hyperparameters capture shape. FFL captures magnitude. Shape is universal.
 Magnitude is bot-specific. The GPR transfers with zero retraining and
 zero kernel retuning.
 
