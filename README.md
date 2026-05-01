@@ -70,7 +70,7 @@ from the competition bot.
 
 The pipeline bot is a one-time investment. Once built, it is never rebuilt.
 The GPR model it produces for a given movement type is reused across bots
-and across seasons with a single scalar coefficient adjustment — no
+and across seasons with a single feed-forward neural network layer with customizable hyperparameters and activation functions to account for differences — no
 retraining, no new data collection, no kernel retuning. The trained model
 transfers directly. One pipeline bot. One person to run it, running asynchronously to the
 rest of the team. The competition bot is never touched for localization purposes.
@@ -82,7 +82,7 @@ directly in the architecture. The model is deliberately scoped to omni wheel
 drift, which is physically universal across all bots running omni wheels.
 The shape of that error — how it scales with RPM, heading, and velocity —
 is the same across bots. Only its magnitude varies with wheel size and
-bot configuration. A single scalar coefficient outside the GPR model accounts
+bot configuration. A  feed-forward layer outside the GPR model accounts
 for this magnitude difference. The GPR itself, and its kernel hyperparameters,
 remain unchanged. This separation is not a convenience — it is physically
 justified by the nature of omni drift, and the architecture is designed around it.
@@ -136,8 +136,7 @@ the pipeline remains a one-time training investment that transfers everywhere.
 The GPR model is general across bots because omni drift is general.
 However, during training the pipeline bot carries a full sensor suite
 that will not be present on the competition bot, changing its mass,
-center of mass, and friction characteristics. A single scalar coefficient
-k is introduced outside the GPR model:
+center of mass, and friction characteristics. A feedforward layer is introduced outside the GPR model:
 
     corrected_error = k · GPR_output
 
@@ -145,7 +144,7 @@ k is tuned once per bot configuration to bridge the training environment
 to the match environment. It absorbs the magnitude difference introduced
 by wheel size, RPM range, and the weight delta from training hardware.
 It does not alter the model's structure or its learned error shape —
-it scales the output. This is why one coefficient is sufficient: the
+it scales the output. This is why one feed-forward layer is sufficient: the
 shape of omni drift error is universal, only the magnitude varies,
 and a scalar captures magnitude difference entirely.
 
@@ -286,7 +285,7 @@ The architecture is built around two principles that reinforce each other:
 
 Omni drift is physically universal — the GPR explains the portion of
 error attributable to it, claims nothing beyond it, and transfers
-across bots via a single scalar. The consistent, repeatable
+across bots via a single layer. The consistent, repeatable
 residual within a movement type is learnable — GPR captures its shape
 from sparse training data, locks its kernel hyperparameters, and transfers
 without retraining. Everything else is accepted as unexplained variance
@@ -347,7 +346,7 @@ a team wins — not just how accurately the bot moves.
 What the pipeline delivers is consistent, principled correction of the
 largest generalizable source of odometry error, with a quantitative
 confidence signal on every correction, transferable across bots with a
-single coefficient adjustment, at zero recurring cost after the initial
+single layer adjustment, at zero recurring cost after the initial
 setup. It does not eliminate all error. It does not replace a full
 localization suite on raw precision. It replaces the recurring burden
 of one with a one-time investment, for a correction that is good enough
