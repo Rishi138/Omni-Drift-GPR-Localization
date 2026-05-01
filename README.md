@@ -146,7 +146,7 @@ by wheel size, RPM range, and the weight delta from training hardware.
 It does not alter the model's structure or its learned error shape —
 it scales the output. This is why one feed-forward layer is sufficient: the
 shape of omni drift error is universal, only the magnitude varies,
-and a scalar captures magnitude difference entirely.
+and a neural-net layer captures magnitude difference entirely.
 
 **Why the relationship is nonlinear:**
 The relationship between movement parameters and omni drift is deeply
