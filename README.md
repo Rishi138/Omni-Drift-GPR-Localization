@@ -132,7 +132,7 @@ every venue, eliminating the reusability that makes the pipeline valuable
 in the first place. By accepting field-surface error as unexplained variance,
 the pipeline remains a one-time training investment that transfers everywhere.
 
-**Tunable scaling coefficient:**
+**Tunable feedforward layer:**
 The GPR model is general across bots because omni drift is general.
 However, during training the pipeline bot carries a full sensor suite
 that will not be present on the competition bot, changing its mass,
@@ -140,7 +140,7 @@ center of mass, and friction characteristics. A feedforward layer is introduced 
 
     corrected_error =  feedforward(GPR_output)
 
-k is tuned once per bot configuration to bridge the training environment
+the feedforward is tuned once per bot configuration and can be adjusted accordingly as time progresses, to bridge the training environment
 to the match environment. It absorbs the magnitude difference introduced
 by wheel size, RPM range, and the weight delta from training hardware.
 It does not alter the model's structure or its learned error shape —
@@ -299,7 +299,7 @@ impossible regardless. This pipeline treats those constraints as a design
 requirement. The correction does not need to happen in real time because
 it has already happened before the match begins.
 
-The scaling argument is the strongest case for the pipeline. Manual PID
+The feedforward layer is the strongest case for the pipeline. Manual PID
 tuning by feel is repeated from scratch for every bot, every movement
 type, every season. It does not transfer. It does not improve with reuse.
 It scales with neither team size nor season length. This pipeline runs
